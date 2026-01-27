@@ -10,7 +10,7 @@ Taking live heart-rate from 60 people at the same time using 20 NPG Lite devices
 
 1. Place all files in the same directory
 2. Serve via local web server: `python -m http.server 8000`
-3. Open `http://localhost:8000/BPM-Data-Plotter.html`
+3. Open `http://localhost:8000/index.html`
 
 ## Features
 
