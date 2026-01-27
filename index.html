@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BPM Data Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #0a0a0a;
+            color: white;
+            overflow: hidden;
+        }
+
+        #header {
+            background: #1a1a1a;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #333;
+        }
+
+        #header h1 {
+            font-size: 18px;
+            color: #00d4ff;
+        }
+
+    /* upload button styles removed (no upload in UI anymore) */
+
+        #stats-bar {
+            background: #1a1a1a;
+            padding: 8px 20px;
+            display: flex;
+            gap: 30px;
+            font-size: 13px;
+            border-bottom: 1px solid #333;
+        }
+
+        .stat {
+            display: flex;
+            gap: 8px;
+        }
+
+        .stat-label {
+            color: #888;
+        }
+
+        .stat-value {
+            color: #00d4ff;
+            font-weight: bold;
+        }
+
+        #control-bar {
+            background: #1a1a1a;
+            padding: 10px 20px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .control-group label {
+            color: #888;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .control-group input[type="text"] {
+            padding: 5px 10px;
+            background: #0a0a0a;
+            border: 1px solid #00d4ff;
+            border-radius: 4px;
+            color: white;
+            font-size: 13px;
+            width: 90px;
+        }
+
+        .control-group button {
+            padding: 5px 15px;
+            background: #00d4ff;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .control-group button:hover {
+            background: #00ffff;
+        }
+
+        .slider-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 20px;
+        }
+
+        .slider-label {
+            color: #888;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .slider-wrapper {
+            flex: 1;
+            position: relative;
+            height: 30px;
+        }
+
+        #data-window-slider {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        #slider-handle {
+            position: absolute;
+            height: 20px;
+            background: #00d4ff;
+            border-radius: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: move;
+            border: 2px solid #00ffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2px;
+        }
+
+        .slider-arrow {
+            color: #000;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: ew-resize;
+            user-select: none;
+            padding: 2px;
+        }
+
+        .arrow-left {
+            cursor: w-resize;
+        }
+
+        .arrow-right {
+            cursor: e-resize;
+        }
+
+        .zoom-info {
+            color: #00d4ff;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .data-source-btn {
+            padding: 8px 16px;
+            background: #2a2a2a;
+            color: #888;
+            border: 2px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .data-source-btn:hover {
+            background: #333;
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        .data-source-btn.active {
+            background: #00d4ff;
+            color: #000;
+            border-color: #00ffff;
+        }
+
+        #main-container {
+            width: 100vw;
+            height: calc(100vh - 160px);
+            position: relative;
+            background: #0a0a0a;
+            display: flex;
+        }
+
+        #fixed-labels-container {
+            width: 60px;
+            height: 100%;
+            background: #1a1a1a;
+            position: relative;
+            z-index: 100;
+            border-right: 2px solid #333;
+        }
+
+        #canvas-wrapper {
+            flex: 1;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #plot-canvas {
+            display: block;
+        }
+
+        #tooltip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+            pointer-events: none;
+            z-index: 1000;
+            border: 2px solid #00d4ff;
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+            line-height: 1.6;
+        }
+
+        .tooltip-row {
+            margin: 4px 0;
+        }
+
+        .tooltip-label {
+            color: #00d4ff;
+            font-weight: bold;
+            display: inline-block;
+            width: 100px;
+        }
+
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10000;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0, 212, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>📊 ISF 2026 BPM Data</h1>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <span style="color: #888; font-size: 14px;">Data Source:</span>
+            <button id="btn-raw" class="data-source-btn active">Raw Data</button>
+            <button id="btn-processed" class="data-source-btn">Processed Data</button>
+        </div>
+    </div>
+
+    <div id="stats-bar">
+        <div class="stat">
+            <span class="stat-label">File:</span>
+            <span class="stat-value" id="file-name">No file loaded</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Records:</span>
+            <span class="stat-value" id="total-records">0</span>
+        </div>
+        <div class="stat">
+            <span class="stat-label">Time Range:</span>
+            <span class="stat-value" id="time-range">-</span>
+        </div>
+    </div>
+
+    <div id="control-bar">
+        <div class="control-group">
+            <label>View:</label>
+            <input type="text" id="time-from" placeholder="HH:MM:SS" readonly>
+            <span style="color: #888;">to</span>
+            <input type="text" id="time-to" placeholder="HH:MM:SS" readonly>
+        </div>
+
+        <div class="slider-container">
+            <span class="slider-label">Timeline:</span>
+            <div class="slider-wrapper">
+                <div id="data-window-slider"></div>
+                <div id="slider-handle">
+                    <span class="slider-arrow arrow-left" id="left-arrow">◀</span>
+                    <span class="slider-arrow arrow-right" id="right-arrow">▶</span>
+                </div>
+            </div>
+            <div class="zoom-info">
+                <span id="window-info">0 pts</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-container">
+        <div id="fixed-labels-container">
+            <canvas id="fixed-labels"></canvas>
+        </div>
+        <div id="canvas-wrapper">
+            <canvas id="plot-canvas"></canvas>
+        </div>
+    </div>
+
+    <div id="tooltip"></div>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <div style="font-size: 18px; color: #00d4ff;">Processing data...</div>
+    </div>
+
+    <div id="error-screen" style="display: none; position: fixed; inset: 0; background: #000; color: #fff; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 20000; text-align: center; padding: 20px;">
+        <div id="error-title" style="font-size: 24px; color: #ff4d4f; font-weight: bold;">Error loading data</div>
+        <div id="error-message" style="font-size: 16px; color: #ccc; max-width: 480px;">
+            Unable to load the CSV data files.
+            Make sure this HTML file and both CSV files are in the same folder and that you're opening it via a local web server.
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('plot-canvas');
+        const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+        const fixedCanvas = document.getElementById('fixed-labels');
+        const fixedCtx = fixedCanvas.getContext('2d', { alpha: false });
+        const wrapper = document.getElementById('canvas-wrapper');
+        const fixedContainer = document.getElementById('fixed-labels-container');
+        const tooltip = document.getElementById('tooltip');
+
+        let allData = [];
+        let visibleData = [];
+        let viewStartIndex = 0;
+        let pointsToShow = 500;
+        let eventMarkers = [];
+        let performanceRanges = [];
+
+        const topPlotHeight = 0.45;
+        const confHeight = 0.0;  // Removed confidence bar
+        const timeAxisHeight = 0.10;
+        const bottomPlotHeight = 0.45;
+        const plotPadding = 20;
+
+        const COLOR_HIGH = '#6bcf7f';
+        const COLOR_MED = '#f0c541';
+        const COLOR_LOW = '#e07a5f';
+
+        let hoverIndex = -1;
+        let hoveredEventMarker = null;
+        let isTimeAxisDragging = false;
+
+        let baseCanvas = null;
+        let baseCtx = null;
+
+        let isSliderDragging = false;
+        let isLeftArrowDragging = false;
+        let isRightArrowDragging = false;
+        let dragStartX = 0;
+        let dragStartLeft = 0;
+        let dragStartWidth = 0;
+
+        const MIN_WINDOW = 100;
+        const MIN_SLIDER_WIDTH = 30;
+        const MAX_SLIDER_WIDTH_RATIO = 1.0;
+
+        // Data source configuration
+        const DATA_SOURCES = {
+            raw: 'ISF-2026-BPM-Data-Raw-with-events.csv',
+            processed: 'ISF-2026-BPM-Data-Processed-with-events.csv'
+        };
+
+        let currentDataSource = 'raw';
+        let cachedData = {
+            raw: null,
+            processed: null
+        };
+
+    // Auto-load CSV file on page load (original behavior)
+        window.addEventListener('DOMContentLoaded', () => {
+            autoLoadData('raw');
+
+            // Setup button click handlers
+            document.getElementById('btn-raw').addEventListener('click', () => switchDataSource('raw'));
+            document.getElementById('btn-processed').addEventListener('click', () => switchDataSource('processed'));
+        });
+
+    function switchDataSource(source) {
+            if (currentDataSource === source) return;
+
+            currentDataSource = source;
+
+            // Update button active states
+            document.getElementById('btn-raw').classList.toggle('active', source === 'raw');
+            document.getElementById('btn-processed').classList.toggle('active', source === 'processed');
+
+            // Load data (use cache if available)
+            if (cachedData[source]) {
+                parseAndRenderData(cachedData[source], DATA_SOURCES[source]);
+            } else {
+                autoLoadData(source);
+            }
+        }
+
+        // Simple helper to show a full-page error without changing core behavior
+        function showFatalError(message) {
+            const loading = document.getElementById('loading');
+            if (loading) loading.style.display = 'none';
+
+            const errorScreen = document.getElementById('error-screen');
+            if (errorScreen) {
+                errorScreen.style.display = 'flex';
+                const msgEl = document.getElementById('error-message');
+                if (msgEl && message) {
+                    msgEl.textContent = message;
+                }
+            }
+
+            // Hide main UI so only error is visible
+            ['header', 'stats-bar', 'control-bar', 'main-container', 'tooltip'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+        }
+
+        async function autoLoadData(source) {
+            const csvFileName = DATA_SOURCES[source];
+            document.getElementById('loading').style.display = 'flex';
+
+            try {
+                const response = await fetch(csvFileName);
+                if (!response.ok) {
+                    throw new Error(`Failed to load ${csvFileName}: ${response.statusText}`);
+                }
+                const text = await response.text();
+                cachedData[source] = text;
+                parseAndRenderData(text, csvFileName);
+            } catch (error) {
+                console.error('Error loading CSV:', error);
+                // This only runs when fetch itself fails (e.g., files missing or not served)
+                showFatalError(`Error loading data file: ${csvFileName}. ${error.message}. Please ensure the file exists in the same folder as this HTML file and that it is being served correctly.`);
+            }
+        }
+
+        const sliderHandle = document.getElementById('slider-handle');
+        const leftArrow = document.getElementById('left-arrow');
+        const rightArrow = document.getElementById('right-arrow');
+
+        sliderHandle.addEventListener('mousedown', startSliderDrag);
+        leftArrow.addEventListener('mousedown', startLeftArrowDrag);
+        rightArrow.addEventListener('mousedown', startRightArrowDrag);
+
+        function parseAndRenderData(csvText, filename) {
+            try {
+                const lines = csvText.trim().split('\n');
+                const headers = lines[0].split(',').map(h => h.trim());
+
+                // Restore original strict header behavior: require exact Time & ConnectedNodes
+                const timeIndex = headers.findIndex(h => h.toLowerCase() === 'time');
+                const connectedNodesIndex = headers.findIndex(h => h.toLowerCase() === 'connectednodes');
+                const eventIndex = headers.findIndex(h => h.toLowerCase() === 'event');
+
+                if (timeIndex === -1 || connectedNodesIndex === -1) {
+                    throw new Error('CSV must contain "Time" and "ConnectedNodes" columns');
+                }
+
+                const hasEventColumn = eventIndex !== -1;
+
+                const nodePersonColumns = [];
+                for (let node = 1; node <= 20; node++) {
+                    const nodeStr = String(node).padStart(2, '0');
+                    const p1Index = headers.findIndex(h => h === `Node${nodeStr}_Person1`);
+                    const p2Index = headers.findIndex(h => h === `Node${nodeStr}_Person2`);
+                    const p3Index = headers.findIndex(h => h === `Node${nodeStr}_Person3`);
+
+                    if (p1Index !== -1 && p2Index !== -1 && p3Index !== -1) {
+                        nodePersonColumns.push({
+                            node: node,
+                            p1: p1Index,
+                            p2: p2Index,
+                            p3: p3Index
+                        });
+                    }
+                }
+
+                if (nodePersonColumns.length === 0) {
+                    throw new Error('No Node##_Person# columns found');
+                }
+
+                allData = [];
+                eventMarkers = [];
+                const performanceStarts = [];
+                const performanceFreezeFrames = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+
+                    const values = lines[i].split(',');
+                    const time = values[timeIndex];
+                    const connectedNodes = parseInt(values[connectedNodesIndex]) || 0;
+                    const event = hasEventColumn ? values[eventIndex].trim() : 'Nil';
+
+                    const bpmValues = [];
+
+                    nodePersonColumns.forEach(node => {
+                        const p1 = parseInt(values[node.p1]);
+                        const p2 = parseInt(values[node.p2]);
+                        const p3 = parseInt(values[node.p3]);
+
+                        const isConnected = (p1 !== 255 || p2 !== 255 || p3 !== 255);
+
+                        if (isConnected) {
+                            if (!isNaN(p1) && p1 !== 255) bpmValues.push(p1);
+                            if (!isNaN(p2) && p2 !== 255) bpmValues.push(p2);
+                            if (!isNaN(p3) && p3 !== 255) bpmValues.push(p3);
+                        }
+                    });
+
+                    let rms = 0;
+                    if (bpmValues.length > 0) {
+                        const sumSquares = bpmValues.reduce((sum, val) => sum + val * val, 0);
+                        rms = Math.sqrt(sumSquares / bpmValues.length);
+                    }
+
+                    const displayBpm = Math.max(40, Math.min(120, rms));
+                    const confidence = connectedNodes > 0 ? (connectedNodes / 20) * 100 : 0;
+
+                    allData.push({
+                        time: time,
+                        connectedNodes: connectedNodes,
+                        bpm: rms,
+                        displayBpm: displayBpm,
+                        confidence: confidence,
+                        isClamped: rms < 40 || rms > 120,
+                        event: event
+                    });
+
+                    if (hasEventColumn && event && event.toLowerCase() !== 'nil') {
+                        eventMarkers.push({
+                            index: allData.length - 1,
+                            event: event,
+                            time: time
+                        });
+
+                        if (event.toLowerCase().includes('performance')) {
+                            performanceStarts.push({
+                                index: allData.length - 1,
+                                event: event
+                            });
+                        } else if (event.toLowerCase().includes('freeze')) {
+                            performanceFreezeFrames.push(allData.length - 1);
+                        }
+                    }
+                }
+
+                performanceRanges = [];
+                const minLen = Math.min(performanceStarts.length, performanceFreezeFrames.length);
+                for (let i = 0; i < minLen; i++) {
+                    performanceRanges.push({
+                        start: performanceStarts[i].index,
+                        end: performanceFreezeFrames[i],
+                        eventName: performanceStarts[i].event
+                    });
+                }
+
+                document.getElementById('file-name').textContent = filename;
+                document.getElementById('total-records').textContent = allData.length;
+                document.getElementById('time-range').textContent = 
+                    `${allData[0].time} → ${allData[allData.length - 1].time}`;
+
+                pointsToShow = Math.min(500, allData.length);
+                viewStartIndex = 0;
+
+                updateVisibleData();
+                setupCanvas();
+                renderBase();
+                renderFixedLabels();
+                render();
+                updateSlider();
+                updateTimeDisplay();
+
+                // On successful parse and render, hide loading overlay (keep main UI visible)
+                const loading = document.getElementById('loading');
+                if (loading) loading.style.display = 'none';
+
+            } catch (error) {
+                console.error('Error parsing CSV:', error);
+                // Only show error screen if parsing truly fails
+                showFatalError('Error parsing CSV file: ' + (error && error.message ? error.message : String(error)));
+            }
+        }
+
+        function updateVisibleData() {
+            const endIndex = Math.min(viewStartIndex + pointsToShow, allData.length);
+            visibleData = allData.slice(viewStartIndex, endIndex);
+        }
+
+        function updateTimeDisplay() {
+            if (visibleData.length > 0) {
+                document.getElementById('time-from').value = visibleData[0].time;
+                document.getElementById('time-to').value = visibleData[visibleData.length - 1].time;
+            }
+        }
+
+        function startSliderDrag(e) {
+            if (e.target === leftArrow || e.target === rightArrow) return;
+
+            isSliderDragging = true;
+            dragStartX = e.clientX;
+            dragStartLeft = sliderHandle.offsetLeft;
+            document.addEventListener('mousemove', handleSliderDrag);
+            document.addEventListener('mouseup', stopDrag);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function startLeftArrowDrag(e) {
+            isLeftArrowDragging = true;
+            dragStartX = e.clientX;
+            dragStartLeft = sliderHandle.offsetLeft;
+            dragStartWidth = sliderHandle.offsetWidth;
+            document.addEventListener('mousemove', handleLeftArrowDrag);
+            document.addEventListener('mouseup', stopDrag);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function startRightArrowDrag(e) {
+            isRightArrowDragging = true;
+            dragStartX = e.clientX;
+            dragStartWidth = sliderHandle.offsetWidth;
+            document.addEventListener('mousemove', handleRightArrowDrag);
+            document.addEventListener('mouseup', stopDrag);
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function handleSliderDrag(e) {
+            if (!isSliderDragging) return;
+
+            const slider = document.getElementById('data-window-slider');
+            const sliderRect = slider.getBoundingClientRect();
+            const sliderWidth = sliderRect.width;
+            const handleWidth = sliderHandle.offsetWidth;
+
+            const deltaX = e.clientX - dragStartX;
+            const newLeft = Math.max(0, Math.min(sliderWidth - handleWidth, dragStartLeft + deltaX));
+
+            const positionRatio = newLeft / (sliderWidth - handleWidth);
+            const maxStartIndex = allData.length - pointsToShow;
+            viewStartIndex = Math.floor(positionRatio * maxStartIndex);
+
+            updateVisibleData();
+            renderBase();
+            render();
+            updateSlider();
+            updateTimeDisplay();
+        }
+
+        function handleLeftArrowDrag(e) {
+            if (!isLeftArrowDragging) return;
+
+            const slider = document.getElementById('data-window-slider');
+            const sliderRect = slider.getBoundingClientRect();
+            const sliderWidth = sliderRect.width;
+
+            const deltaX = e.clientX - dragStartX;
+            const newLeft = Math.max(0, dragStartLeft + deltaX);
+            const newWidth = Math.max(MIN_SLIDER_WIDTH, dragStartWidth - deltaX);
+
+            const widthRatio = newWidth / sliderWidth;
+            const newPointsToShow = Math.max(MIN_WINDOW, Math.min(allData.length, Math.floor(widthRatio * allData.length)));
+
+            const oldEndIndex = viewStartIndex + pointsToShow;
+            pointsToShow = newPointsToShow;
+            viewStartIndex = Math.max(0, oldEndIndex - pointsToShow);
+
+            updateVisibleData();
+            renderBase();
+            render();
+            updateSlider();
+            updateTimeDisplay();
+        }
+
+        function handleRightArrowDrag(e) {
+            if (!isRightArrowDragging) return;
+
+            const slider = document.getElementById('data-window-slider');
+            const sliderRect = slider.getBoundingClientRect();
+            const sliderWidth = sliderRect.width;
+
+            const deltaX = e.clientX - dragStartX;
+            const newWidth = Math.max(MIN_SLIDER_WIDTH, dragStartWidth + deltaX);
+
+            const widthRatio = newWidth / sliderWidth;
+            const newPointsToShow = Math.max(MIN_WINDOW, Math.min(allData.length, Math.floor(widthRatio * allData.length)));
+
+            pointsToShow = newPointsToShow;
+            viewStartIndex = Math.min(viewStartIndex, allData.length - pointsToShow);
+
+            updateVisibleData();
+            renderBase();
+            render();
+            updateSlider();
+            updateTimeDisplay();
+        }
+
+        function stopDrag() {
+            isSliderDragging = false;
+            isLeftArrowDragging = false;
+            isRightArrowDragging = false;
+            document.removeEventListener('mousemove', handleSliderDrag);
+            document.removeEventListener('mousemove', handleLeftArrowDrag);
+            document.removeEventListener('mousemove', handleRightArrowDrag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+
+        function updateSlider() {
+            const slider = document.getElementById('data-window-slider');
+            const sliderWidth = slider.offsetWidth;
+
+            const windowRatio = pointsToShow / allData.length;
+            const maxSliderWidth = sliderWidth * MAX_SLIDER_WIDTH_RATIO;
+            const handleWidth = Math.max(MIN_SLIDER_WIDTH, Math.min(maxSliderWidth, sliderWidth * windowRatio));
+
+            sliderHandle.style.width = handleWidth + 'px';
+
+            const maxStartIndex = allData.length - pointsToShow;
+            const positionRatio = maxStartIndex > 0 ? viewStartIndex / maxStartIndex : 0;
+            const maxHandlePos = sliderWidth - handleWidth;
+            sliderHandle.style.left = (positionRatio * maxHandlePos) + 'px';
+
+            document.getElementById('window-info').textContent = pointsToShow + ' pts';
+        }
+
+        function setupCanvas() {
+            const screenWidth = wrapper.clientWidth;
+
+            canvas.width = screenWidth;
+            canvas.height = wrapper.clientHeight;
+
+            fixedCanvas.width = 60;
+            fixedCanvas.height = canvas.height;
+
+            if (!baseCanvas) {
+                baseCanvas = document.createElement('canvas');
+                baseCtx = baseCanvas.getContext('2d', { alpha: false, desynchronized: true });
+            }
+
+            baseCanvas.width = canvas.width;
+            baseCanvas.height = canvas.height;
+
+            if (!canvas.hasMouseMoveListener) {
+                canvas.addEventListener('mousemove', handleMouseMove);
+                canvas.addEventListener('mouseleave', handleMouseLeave);
+                canvas.addEventListener('mousedown', handleMouseDown);
+                canvas.addEventListener('mouseup', handleMouseUp);
+                canvas.addEventListener('wheel', handleWheel, { passive: false });
+                canvas.hasMouseMoveListener = true;
+            }
+        }
+
+        function handleWheel(e) {
+            e.preventDefault();
+
+            const delta = e.deltaY;
+            const scrollSpeed = 10;
+            const deltaPoints = delta > 0 ? scrollSpeed : -scrollSpeed;
+
+            const newStartIndex = Math.max(0, Math.min(allData.length - pointsToShow, viewStartIndex + deltaPoints));
+
+            if (newStartIndex !== viewStartIndex) {
+                viewStartIndex = newStartIndex;
+                updateVisibleData();
+                renderBase();
+                render();
+                updateSlider();
+                updateTimeDisplay();
+            }
+        }
+
+        function handleMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+
+            const h = canvas.height;
+            const timeAxisY = h * (topPlotHeight + confHeight);
+            const timeAxisBottom = timeAxisY + (h * timeAxisHeight);
+
+            if (y >= timeAxisY && y <= timeAxisBottom) {
+                isTimeAxisDragging = true;
+                dragStartX = e.clientX;
+                canvas.style.cursor = 'grabbing';
+
+                document.addEventListener('mousemove', handleDrag);
+                document.addEventListener('mouseup', handleMouseUp);
+            }
+        }
+
+        function handleDrag(e) {
+            if (!isTimeAxisDragging) return;
+
+            const dx = dragStartX - e.clientX;
+            const pixelsPerPoint = canvas.width / pointsToShow;
+            const deltaPoints = Math.round(dx / pixelsPerPoint);
+
+            const newStartIndex = Math.max(0, Math.min(allData.length - pointsToShow, viewStartIndex + deltaPoints));
+
+            if (newStartIndex !== viewStartIndex) {
+                viewStartIndex = newStartIndex;
+                updateVisibleData();
+                renderBase();
+                render();
+                updateSlider();
+                updateTimeDisplay();
+                dragStartX = e.clientX;
+            }
+        }
+
+        function handleMouseUp(e) {
+            if (isTimeAxisDragging) {
+                isTimeAxisDragging = false;
+                canvas.style.cursor = 'default';
+                document.removeEventListener('mousemove', handleDrag);
+                document.removeEventListener('mouseup', handleMouseUp);
+            }
+        }
+
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const pixelsPerPoint = canvas.width / pointsToShow;
+            const dataIndex = Math.floor((mouseX - plotPadding) / pixelsPerPoint);
+
+            const h = canvas.height;
+            const timeAxisY = h * (topPlotHeight + confHeight);
+            const timeAxisBottom = timeAxisY + (h * timeAxisHeight);
+            const bpmMarkerY = h * confHeight + 15;
+            const nodesMarkerY = timeAxisBottom + 25;
+
+            if (mouseY >= timeAxisY && mouseY <= timeAxisBottom && !isTimeAxisDragging) {
+                canvas.style.cursor = 'grab';
+            } else if (!isTimeAxisDragging) {
+                canvas.style.cursor = 'default';
+            }
+
+            // Check if hovering over an event marker circle (expanded hover area)
+            let hoveredMarker = null;
+            const hoverRadius = 12; // Larger radius for easier hovering
+            
+            for (let marker of eventMarkers) {
+                const localIndex = marker.index - viewStartIndex;
+                if (localIndex >= 0 && localIndex < visibleData.length) {
+                    const markerX = plotPadding + (localIndex * pixelsPerPoint);
+                    
+                    // Check BPM plot marker
+                    const distToBpmMarker = Math.sqrt(Math.pow(mouseX - markerX, 2) + Math.pow(mouseY - bpmMarkerY, 2));
+                    if (distToBpmMarker <= hoverRadius) {
+                        hoveredMarker = marker;
+                        break;
+                    }
+                    
+                    // Check Nodes plot marker
+                    const distToNodesMarker = Math.sqrt(Math.pow(mouseX - markerX, 2) + Math.pow(mouseY - nodesMarkerY, 2));
+                    if (distToNodesMarker <= hoverRadius) {
+                        hoveredMarker = marker;
+                        break;
+                    }
+                }
+            }
+
+            // If hovering over event marker, show full info including event
+            if (hoveredMarker) {
+                if (hoverIndex !== -1) {
+                    hoverIndex = -1;
+                }
+                if (hoveredEventMarker !== hoveredMarker) {
+                    hoveredEventMarker = hoveredMarker;
+                    requestAnimationFrame(render);
+                }
+
+                const markerDataIndex = hoveredMarker.index - viewStartIndex;
+                if (markerDataIndex >= 0 && markerDataIndex < visibleData.length) {
+                    const d = visibleData[markerDataIndex];
+                    const globalIndex = hoveredMarker.index;
+
+                    let tooltipHTML = `
+                        <div class="tooltip-row"><span class="tooltip-label">Time:</span> ${d.time}</div>
+                        <div class="tooltip-row"><span class="tooltip-label">BPM:</span> ${d.bpm.toFixed(1)} ${d.isClamped ? '(clamped)' : ''}</div>
+                        <div class="tooltip-row"><span class="tooltip-label">Nodes:</span> ${d.connectedNodes} / 20</div>
+                        <div class="tooltip-row"><span class="tooltip-label">Confidence:</span> ${d.confidence.toFixed(1)}%</div>
+                    `;
+
+                    const inPerformance = performanceRanges.find(r => globalIndex >= r.start && globalIndex <= r.end);
+                    if (inPerformance) {
+                        tooltipHTML += `<div class="tooltip-row"><span class="tooltip-label">Performance:</span> ${inPerformance.eventName}</div>`;
+                    } else if (d.event && d.event.toLowerCase() !== 'nil') {
+                        tooltipHTML += `<div class="tooltip-row"><span class="tooltip-label">Event:</span> ${d.event}</div>`;
+                    }
+
+                    tooltip.innerHTML = tooltipHTML;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (e.clientX + 15) + 'px';
+                    tooltip.style.top = (e.clientY + 15) + 'px';
+                }
+                canvas.style.cursor = 'pointer';
+                return;
+            } else if (hoveredEventMarker !== null) {
+                hoveredEventMarker = null;
+                requestAnimationFrame(render);
+            }
+
+            // Normal hover behavior for data points
+            if (dataIndex >= 0 && dataIndex < visibleData.length) {
+                if (hoverIndex !== dataIndex) {
+                    hoverIndex = dataIndex;
+                    requestAnimationFrame(render);
+                }
+
+                const d = visibleData[dataIndex];
+                const globalIndex = viewStartIndex + dataIndex;
+
+                let tooltipHTML = `
+                    <div class="tooltip-row"><span class="tooltip-label">Time:</span> ${d.time}</div>
+                    <div class="tooltip-row"><span class="tooltip-label">BPM:</span> ${d.bpm.toFixed(1)} ${d.isClamped ? '(clamped)' : ''}</div>
+                    <div class="tooltip-row"><span class="tooltip-label">Nodes:</span> ${d.connectedNodes} / 20</div>
+                    <div class="tooltip-row"><span class="tooltip-label">Confidence:</span> ${d.confidence.toFixed(1)}%</div>
+                `;
+
+                const inPerformance = performanceRanges.find(r => globalIndex >= r.start && globalIndex <= r.end);
+                if (inPerformance) {
+                    tooltipHTML += `<div class="tooltip-row"><span class="tooltip-label">Performance:</span> ${inPerformance.eventName}</div>`;
+                } else if (d.event && d.event.toLowerCase() !== 'nil') {
+                    tooltipHTML += `<div class="tooltip-row"><span class="tooltip-label">Event:</span> ${d.event}</div>`;
+                }
+
+                tooltip.innerHTML = tooltipHTML;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 15) + 'px';
+                tooltip.style.top = (e.clientY + 15) + 'px';
+            } else {
+                if (hoverIndex !== -1) {
+                    hoverIndex = -1;
+                    requestAnimationFrame(render);
+                }
+                tooltip.style.display = 'none';
+            }
+        }
+
+        function handleMouseLeave() {
+            if (hoverIndex !== -1) {
+                hoverIndex = -1;
+                requestAnimationFrame(render);
+            }
+            if (hoveredEventMarker !== null) {
+                hoveredEventMarker = null;
+                requestAnimationFrame(render);
+            }
+            tooltip.style.display = 'none';
+            canvas.style.cursor = 'default';
+        }
+
+        function renderBase() {
+            const h = baseCanvas.height;
+            const confPlotHeight = h * confHeight;
+            const topHeight = h * topPlotHeight;
+            const timeAxisY = confPlotHeight + topHeight;
+            const timeAxisBottom = timeAxisY + (h * timeAxisHeight);
+            const bottomY = timeAxisBottom;
+            const bottomHeight = h * bottomPlotHeight;
+
+            const pixelsPerPoint = baseCanvas.width / pointsToShow;
+
+            // Skip confidence plot drawing since confHeight is now 0
+            drawBPMPlot(baseCtx, confPlotHeight, topHeight, pixelsPerPoint);
+            drawTimeAxis(baseCtx, timeAxisY, timeAxisBottom, pixelsPerPoint);
+            drawNodesPlot(baseCtx, bottomY, bottomHeight, pixelsPerPoint);
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(baseCanvas, 0, 0);
+
+            if (hoverIndex >= 0 && hoverIndex < visibleData.length) {
+                const h = canvas.height;
+                const confPlotHeight = h * confHeight;
+                const topHeight = h * topPlotHeight;
+                const bottomY = confPlotHeight + topHeight + (h * timeAxisHeight);
+                const bottomHeight = h * bottomPlotHeight;
+                const pixelsPerPoint = canvas.width / pointsToShow;
+                drawHoverMarkers(hoverIndex, topHeight, bottomY, bottomHeight, confPlotHeight, pixelsPerPoint);
+            }
+
+            // Draw white outline on hovered event marker
+            if (hoveredEventMarker) {
+                const h = canvas.height;
+                const bpmMarkerY = h * confHeight + 15;
+                const timeAxisBottom = h * (topPlotHeight + confHeight) + (h * timeAxisHeight);
+                const nodesMarkerY = timeAxisBottom + 25;
+                const pixelsPerPoint = canvas.width / pointsToShow;
+                
+                const localIndex = hoveredEventMarker.index - viewStartIndex;
+                if (localIndex >= 0 && localIndex < visibleData.length) {
+                    const markerX = plotPadding + (localIndex * pixelsPerPoint);
+                    
+                    // Draw white outline on BPM marker
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(markerX, bpmMarkerY, 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    // Draw white outline on Nodes marker
+                    ctx.beginPath();
+                    ctx.arc(markerX, nodesMarkerY, 5, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function renderFixedLabels() {
+            if (!fixedCtx) return;
+
+            fixedCtx.clearRect(0, 0, fixedCanvas.width, fixedCanvas.height);
+
+            const h = fixedCanvas.height;
+            const confPlotHeight = h * confHeight;
+            const topHeight = h * topPlotHeight;
+            const timeAxisY = confPlotHeight + topHeight;
+            const timeAxisBottom = timeAxisY + (h * timeAxisHeight);
+            const bottomY = timeAxisBottom;
+
+            fixedCtx.fillStyle = '#1a1a1a';
+            fixedCtx.fillRect(0, 0, fixedCanvas.width, fixedCanvas.height);
+
+            // No confidence legend anymore
+
+            fixedCtx.font = 'bold 12px Arial';
+            fixedCtx.fillStyle = '#888';
+            fixedCtx.textAlign = 'right';
+
+            const plotHeight = topHeight - 30;
+            for (let bpm = 40; bpm <= 120; bpm += 10) {
+                const y = confPlotHeight + 20 + (120 - bpm) * (plotHeight / 80);
+                fixedCtx.fillText(bpm, fixedCanvas.width - 10, y + 4);
+            }
+
+            fixedCtx.save();
+            fixedCtx.translate(15, confPlotHeight + topHeight / 2);
+            fixedCtx.rotate(-Math.PI / 2);
+            fixedCtx.fillStyle = '#00d4ff';
+            fixedCtx.font = 'bold 13px Arial';
+            fixedCtx.textAlign = 'center';
+            fixedCtx.fillText('BPM', 0, 0);
+            fixedCtx.restore();
+
+            fixedCtx.font = 'bold 12px Arial';
+            fixedCtx.fillStyle = '#888';
+            fixedCtx.textAlign = 'right';
+
+            const nodesPlotHeight = (h * bottomPlotHeight) - 40;
+            for (let n = 0; n <= 20; n += 2) {
+                const y = bottomY + 30 + nodesPlotHeight - (n * (nodesPlotHeight / 20));
+                fixedCtx.fillText(n, fixedCanvas.width - 10, y + 4);
+            }
+
+            fixedCtx.save();
+            fixedCtx.translate(15, bottomY + (h * bottomPlotHeight) / 2);
+            fixedCtx.rotate(-Math.PI / 2);
+            fixedCtx.fillStyle = '#00ff88';
+            fixedCtx.font = 'bold 13px Arial';
+            fixedCtx.textAlign = 'center';
+            fixedCtx.fillText('Nodes', 0, 0);
+            fixedCtx.restore();
+
+            fixedCtx.fillStyle = '#888';
+            fixedCtx.font = 'bold 10px Arial';
+            fixedCtx.textAlign = 'center';
+            fixedCtx.fillText('Time', fixedCanvas.width / 2, timeAxisY + (timeAxisBottom - timeAxisY) / 2 - 5);
+            fixedCtx.fillText('(IST)', fixedCanvas.width / 2, timeAxisY + (timeAxisBottom - timeAxisY) / 2 + 5);
+        }
+
+        function drawConfidencePlot(context, startY, height, ppp) {
+            context.fillStyle = '#0a0a0a';
+            context.fillRect(0, startY, canvas.width, height);
+
+            for (let i = 0; i < visibleData.length; i++) {
+                const x = plotPadding + (i * ppp);
+                const nodes = visibleData[i].connectedNodes;
+
+                if (nodes < 5) context.fillStyle = COLOR_LOW;
+                else if (nodes <= 10) context.fillStyle = COLOR_MED;
+                else context.fillStyle = COLOR_HIGH;
+
+                context.fillRect(x, startY, ppp, height);
+            }
+        }
+
+        function drawBPMPlot(context, startY, height, ppp) {
+            const plotHeight = height - 30;
+
+            context.fillStyle = '#1a1a1a';
+            context.fillRect(0, startY, canvas.width, height);
+
+            // Draw horizontal grid lines
+            context.strokeStyle = '#333';
+            context.lineWidth = 1;
+
+            for (let bpm = 40; bpm <= 120; bpm += 10) {
+                const y = startY + 20 + (120 - bpm) * (plotHeight / 80);
+                context.beginPath();
+                context.moveTo(0, y);
+                context.lineTo(canvas.width, y);
+                context.stroke();
+            }
+
+            // Draw performance range backgrounds first (so bars appear on top)
+            context.fillStyle = 'rgba(255, 0, 0, 0.12)';
+            for (let range of performanceRanges) {
+                const rangeStart = range.start - viewStartIndex;
+                const rangeEnd = range.end - viewStartIndex;
+
+                if (rangeEnd >= 0 && rangeStart < visibleData.length) {
+                    const startIdx = Math.max(0, rangeStart);
+                    const endIdx = Math.min(visibleData.length - 1, rangeEnd);
+
+                    const x1 = plotPadding + (startIdx * ppp);
+                    const x2 = plotPadding + ((endIdx + 1) * ppp);
+                    context.fillRect(x1, startY + 20, x2 - x1, plotHeight);
+                }
+            }
+
+            // Draw BPM bars with color coding: green <90, orange 90-110, red >110
+            const barWidth = Math.max(1, ppp * 0.8);
+            
+            for (let i = 0; i < visibleData.length; i++) {
+                const x = plotPadding + (i * ppp);
+                const bpm = visibleData[i].displayBpm;
+                const actualBpm = visibleData[i].bpm;
+                const isClamped = visibleData[i].isClamped;
+                
+                // Color coding based on actual BPM value
+                // If clamped, always show red
+                if (isClamped) {
+                    context.fillStyle = '#ef4444'; // red for clamped values
+                } else if (actualBpm < 90) {
+                    context.fillStyle = '#4ade80'; // green
+                } else if (actualBpm <= 110) {
+                    context.fillStyle = '#fb923c'; // orange
+                } else {
+                    context.fillStyle = '#ef4444'; // red
+                }
+
+                const barHeight = (bpm - 40) * (plotHeight / 80);
+                const barY = startY + 20 + plotHeight - barHeight;
+                
+                context.fillRect(x - barWidth/2, barY, barWidth, barHeight);
+            }
+
+            // Draw event markers as vertical highlight bars
+            for (let marker of eventMarkers) {
+                const localIndex = marker.index - viewStartIndex;
+                if (localIndex >= 0 && localIndex < visibleData.length) {
+                    const x = plotPadding + (localIndex * ppp);
+                    
+                    // Draw a vertical line with glow effect
+                    context.strokeStyle = '#a855f7'; // purple
+                    context.lineWidth = 3;
+                    context.shadowColor = '#a855f7';
+                    context.shadowBlur = 8;
+                    context.beginPath();
+                    context.moveTo(x, startY + 20);
+                    context.lineTo(x, startY + 20 + plotHeight);
+                    context.stroke();
+                    context.shadowBlur = 0;
+
+                    // Add a marker dot at the top (consistent with Nodes plot)
+                    context.fillStyle = '#a855f7';
+                    context.beginPath();
+                    context.arc(x, startY + 15, 4, 0, Math.PI * 2);
+                    context.fill();
+                }
+            }
+        }
+
+        function drawTimeAxis(context, startY, endY, ppp) {
+            const height = endY - startY;
+
+            context.fillStyle = '#0a0a0a';
+            context.fillRect(0, startY, canvas.width, height);
+
+            context.fillStyle = 'rgba(255, 0, 0, 0.15)';
+            for (let range of performanceRanges) {
+                const rangeStart = range.start - viewStartIndex;
+                const rangeEnd = range.end - viewStartIndex;
+
+                if (rangeEnd >= 0 && rangeStart < visibleData.length) {
+                    const startIdx = Math.max(0, rangeStart);
+                    const endIdx = Math.min(visibleData.length - 1, rangeEnd);
+
+                    const x1 = plotPadding + (startIdx * ppp);
+                    const x2 = plotPadding + ((endIdx + 1) * ppp);
+                    context.fillRect(x1, startY, x2 - x1, height);
+                }
+            }
+
+            context.strokeStyle = '#00d4ff';
+            context.lineWidth = 2;
+            context.beginPath();
+            context.moveTo(0, startY);
+            context.lineTo(canvas.width, startY);
+            context.stroke();
+
+            context.beginPath();
+            context.moveTo(0, endY);
+            context.lineTo(canvas.width, endY);
+            context.stroke();
+
+            context.fillStyle = '#00d4ff';
+            context.font = 'bold 12px Arial';
+            context.textAlign = 'center';
+
+            const labelInterval = Math.max(1, Math.floor(80 / ppp));
+
+            for (let i = 0; i < visibleData.length; i += labelInterval) {
+                const x = plotPadding + (i * ppp);
+
+                context.save();
+                context.translate(x, startY + height / 2);
+                context.rotate(-Math.PI / 4);
+                context.fillText(visibleData[i].time, 0, 0);
+                context.restore();
+
+                context.strokeStyle = '#555';
+                context.lineWidth = 1;
+                context.beginPath();
+                context.moveTo(x, startY);
+                context.lineTo(x, startY + 8);
+                context.stroke();
+                context.beginPath();
+                context.moveTo(x, endY - 8);
+                context.lineTo(x, endY);
+                context.stroke();
+            }
+
+            context.fillStyle = '#a855f7'; // purple to match graph event markers
+            for (let marker of eventMarkers) {
+                const localIndex = marker.index - viewStartIndex;
+                if (localIndex >= 0 && localIndex < visibleData.length) {
+                    const x = plotPadding + (localIndex * ppp);
+                    context.fillRect(x - 1, startY + 2, 2, height - 4);
+                }
+            }
+        }
+
+        function drawNodesPlot(context, startY, height, ppp) {
+            const plotHeight = height - 40;
+
+            context.fillStyle = '#1a1a1a';
+            context.fillRect(0, startY, canvas.width, height);
+
+            const maxNodes = 20;
+
+            // Draw horizontal grid lines
+            context.strokeStyle = '#333';
+            context.lineWidth = 1;
+
+            for (let n = 0; n <= 20; n += 2) {
+                const y = startY + 30 + plotHeight - (n * (plotHeight / maxNodes));
+                context.beginPath();
+                context.moveTo(0, y);
+                context.lineTo(canvas.width, y);
+                context.stroke();
+            }
+
+            // Draw performance range backgrounds first
+            context.fillStyle = 'rgba(255, 0, 0, 0.12)';
+            for (let range of performanceRanges) {
+                const rangeStart = range.start - viewStartIndex;
+                const rangeEnd = range.end - viewStartIndex;
+
+                if (rangeEnd >= 0 && rangeStart < visibleData.length) {
+                    const startIdx = Math.max(0, rangeStart);
+                    const endIdx = Math.min(visibleData.length - 1, rangeEnd);
+
+                    const x1 = plotPadding + (startIdx * ppp);
+                    const x2 = plotPadding + ((endIdx + 1) * ppp);
+                    context.fillRect(x1, startY + 30, x2 - x1, plotHeight);
+                }
+            }
+
+            // Draw nodes as vertical bars with color coding
+            // Red when < 5, Orange when 5-10, Green when > 10
+            const barWidth = Math.max(1, ppp * 0.8);
+            
+            for (let i = 0; i < visibleData.length; i++) {
+                const x = plotPadding + (i * ppp);
+                const nodes = visibleData[i].connectedNodes;
+                
+                // Color coding based on connected nodes
+                if (nodes < 5) {
+                    context.fillStyle = '#ef4444'; // red
+                } else if (nodes <= 10) {
+                    context.fillStyle = '#fb923c'; // orange
+                } else {
+                    context.fillStyle = '#4ade80'; // green
+                }
+                
+                const barHeight = (nodes * (plotHeight / maxNodes));
+                const barY = startY + 30 + plotHeight - barHeight;
+                
+                context.fillRect(x - barWidth/2, barY, barWidth, barHeight);
+            }
+
+            // Draw event markers as vertical highlight bars
+            for (let marker of eventMarkers) {
+                const localIndex = marker.index - viewStartIndex;
+                if (localIndex >= 0 && localIndex < visibleData.length) {
+                    const x = plotPadding + (localIndex * ppp);
+                    
+                    // Draw a vertical line with glow effect
+                    context.strokeStyle = '#a855f7'; // purple
+                    context.lineWidth = 3;
+                    context.shadowColor = '#a855f7';
+                    context.shadowBlur = 8;
+                    context.beginPath();
+                    context.moveTo(x, startY + 30);
+                    context.lineTo(x, startY + 30 + plotHeight);
+                    context.stroke();
+                    context.shadowBlur = 0;
+
+                    // Add a marker dot at the top (consistent with BPM plot)
+                    context.fillStyle = '#a855f7';
+                    context.beginPath();
+                    context.arc(x, startY + 25, 4, 0, Math.PI * 2);
+                    context.fill();
+                }
+            }
+        }
+
+        function drawHoverMarkers(index, topHeight, bottomY, bottomHeight, confStartY, ppp) {
+            const x = plotPadding + (index * ppp);
+
+            // Draw vertical line spanning both plots for hover indicator
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(x, confStartY);
+            ctx.lineTo(x, bottomY + bottomHeight);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw highlight on BPM bar
+            const plotHeight = topHeight - 30;
+            const bpm = visibleData[index].displayBpm;
+            const barHeight = (bpm - 40) * (plotHeight / 80);
+            const barY = confStartY + 20 + plotHeight - barHeight;
+            
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x - (ppp * 0.4), barY, ppp * 0.8, barHeight);
+
+            // Draw marker dot at top of BPM bar
+            ctx.beginPath();
+            ctx.arc(x, barY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#00d4ff';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw highlight on Nodes bar
+            const nodes = visibleData[index].connectedNodes;
+            const bottomPlotHeight = bottomHeight - 40;
+            const nodesBarHeight = (nodes * (bottomPlotHeight / 20));
+            const nodesBarY = bottomY + 30 + bottomPlotHeight - nodesBarHeight;
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x - (ppp * 0.4), nodesBarY, ppp * 0.8, nodesBarHeight);
+
+            // Draw marker dot at top of Nodes bar with color based on node count
+            let nodeColor;
+            if (nodes < 5) {
+                nodeColor = '#ef4444'; // red
+            } else if (nodes <= 10) {
+                nodeColor = '#fb923c'; // orange
+            } else {
+                nodeColor = '#4ade80'; // green
+            }
+            
+            ctx.beginPath();
+            ctx.arc(x, nodesBarY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = nodeColor;
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        window.addEventListener('resize', () => {
+            if (visibleData.length > 0) {
+                setupCanvas();
+                renderBase();
+                renderFixedLabels();
+                render();
+                updateSlider();
+            }
+        });
+    </script>
+</body>
+</html>
