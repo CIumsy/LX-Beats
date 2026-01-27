@@ -40,6 +40,22 @@ Taking live heart-rate from 60 people at the same time using 20 NPG Lite devices
 - Switch between "Raw Data" and "Processed Data" buttons at top-right
 - Data is cached for instant switching
 
+## Data Processing
+
+The project includes a Jupyter notebook [`ISF-2026-Data-Processing.ipynb`](ISF-2026-Data-Processing.ipynb) for processing raw BPM data:
+
+**Processing Steps:**
+1. **Event Marker Integration**: Merges event markers from [`ISF-Event-Markers.csv`](ISF-Event-Markers.csv) into the main dataset
+2. **Raw Data Export**: Generates [`ISF-2026-BPM-Data-Raw-with-events.csv`](ISF-2026-BPM-Data-Raw-with-events.csv) with all 20 nodes
+3. **Data Filtering**: Creates processed dataset by:
+   - Removing Node14 (disconnected device)
+   - Filtering out rows with ConnectedNodes < 2
+4. **Processed Data Export**: Generates [`ISF-2026-BPM-Data-Processed-with-events.csv`](ISF-2026-BPM-Data-Processed-with-events.csv)
+
+**Requirements**: `pandas`, `pathlib`
+
+**Usage**: Run all cells sequentially to regenerate both CSV files from source data.
+
 ## Files Required
 
 - `ISF-2026-BPM-Data-Raw-with-events.csv`
