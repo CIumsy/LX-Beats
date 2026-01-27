@@ -44,7 +44,7 @@ Taking live heart-rate from 60 people at the same time using 20 NPG Lite devices
 
 - `ISF-2026-BPM-Data-Raw-with-events.csv`
 - `ISF-2026-BPM-Data-Processed-with-events.csv`
-- `BPM-Data-Plotter.html`
+- `index.html`
 
 ---
 
