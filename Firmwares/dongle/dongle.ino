@@ -50,11 +50,17 @@ void drawBlock(int id, bool online) {
 }
  
 void OnDataRecv(const esp_now_recv_info *info, const uint8_t *data, int len) {
-    if (currentPollingID != -1 && len == 3) {
-        if (memcmp(info->src_addr, nodeMACs[currentPollingID], 6) == 0) {
+void OnDataRecv(const esp_now_recv_info *info, const uint8_t *data, int len) {
+    int polled = currentPollingID;
+    if (polled >= 0 && polled < NUM_NODES && len == 3) {
+        if (memcmp(info->src_addr, nodeMACs[polled], 6) == 0) {
             // Map 3 bytes from node directly into the packet buffer data section
-            memcpy(&packetBuffer[HEADER_LEN + (currentPollingID * 3)], data, 3);
-            lastSeen[currentPollingID] = millis();
+            memcpy(&packetBuffer[HEADER_LEN + (polled * 3)], data, 3);
+            lastSeen[polled] = millis();
+            dataReceived = true;
+        }
+    }
+}
             dataReceived = true;
         }
     }
@@ -72,13 +78,18 @@ void setup() {
     packetBuffer[PACKET_LEN - 1] = END_BYTE;
  
     WiFi.mode(WIFI_STA);
-    esp_now_init();
+    if (esp_now_init() != ESP_OK) {
+        ESP_LOGE("POLL", "esp_now_init failed");
+        return;
+    }
     esp_now_register_recv_cb(OnDataRecv);
  
     for (int i = 0; i < NUM_NODES; i++) {
         esp_now_peer_info_t peer = {};
         memcpy(peer.peer_addr, nodeMACs[i], 6);
-        esp_now_add_peer(&peer);
+        if (esp_now_add_peer(&peer) != ESP_OK) {
+            ESP_LOGW("POLL", "Failed to add peer %d", i + 1);
+        }
         drawBlock(i, false); 
         lastDrawnStatus[i] = false;
     }
@@ -112,7 +123,7 @@ void loop() {
  
     // 4. Update Screen Status
     for (int i = 0; i < NUM_NODES; i++) {
-        bool isOnline = (millis() - lastSeen[i] < OFFLINE_THRESHOLD);
+        bool isOnline = (lastSeen[i] != 0) && (millis() - lastSeen[i] < OFFLINE_THRESHOLD);
         if (isOnline != lastDrawnStatus[i]) {
             drawBlock(i, isOnline);
             lastDrawnStatus[i] = isOnline;
