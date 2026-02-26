@@ -566,7 +566,11 @@
       currentData[0] = det[0].bpmU8Rounded();
       currentData[1] = det[1].bpmU8Rounded();
       currentData[2] = det[2].bpmU8Rounded();
-      esp_now_send(masterMAC, currentData, 3);
+      esp_err_t err = esp_now_send(masterMAC, currentData, 3);
+      if (err != ESP_OK) 
+      {
+        Serial.printf("esp_now_send failed: %d\n", err);
+      }
     }
   }
 
@@ -659,11 +663,19 @@
 
     // --- ESP-NOW init (WiFi STA) ---
     WiFi.mode(WIFI_STA);
-    esp_now_init();
+    if (esp_now_init() != ESP_OK) 
+    {
+      Serial.println("esp_now_init failed");
+      return;
+    }
 
     esp_now_peer_info_t peer = {};
     memcpy(peer.peer_addr, masterMAC, 6);
-    esp_now_add_peer(&peer);
+    if (esp_now_add_peer(&peer) != ESP_OK) 
+    {
+      Serial.println("esp_now_add_peer failed");
+      return;
+    }
 
     esp_now_register_recv_cb(OnDataRecv);
 
