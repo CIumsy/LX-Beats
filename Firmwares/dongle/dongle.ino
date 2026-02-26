@@ -78,13 +78,18 @@ void setup() {
     packetBuffer[PACKET_LEN - 1] = END_BYTE;
  
     WiFi.mode(WIFI_STA);
-    esp_now_init();
+    if (esp_now_init() != ESP_OK) {
+        ESP_LOGE("POLL", "esp_now_init failed");
+        return;
+    }
     esp_now_register_recv_cb(OnDataRecv);
  
     for (int i = 0; i < NUM_NODES; i++) {
         esp_now_peer_info_t peer = {};
         memcpy(peer.peer_addr, nodeMACs[i], 6);
-        esp_now_add_peer(&peer);
+        if (esp_now_add_peer(&peer) != ESP_OK) {
+            ESP_LOGW("POLL", "Failed to add peer %d", i + 1);
+        }
         drawBlock(i, false); 
         lastDrawnStatus[i] = false;
     }
