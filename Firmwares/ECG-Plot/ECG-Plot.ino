@@ -508,7 +508,7 @@ void loop() {
     searchbackIfNeeded(ch);
 
     // For plotting: offset each channel so they don't overlap too much
-    float disp = y + 800.0f;
+    float disp = y + (800.0f * (float)ch);
     pushOutput(ch, disp);
   }
 
