@@ -123,7 +123,7 @@ void loop() {
  
     // 4. Update Screen Status
     for (int i = 0; i < NUM_NODES; i++) {
-        bool isOnline = (millis() - lastSeen[i] < OFFLINE_THRESHOLD);
+        bool isOnline = (lastSeen[i] != 0) && (millis() - lastSeen[i] < OFFLINE_THRESHOLD);
         if (isOnline != lastDrawnStatus[i]) {
             drawBlock(i, isOnline);
             lastDrawnStatus[i] = isOnline;
