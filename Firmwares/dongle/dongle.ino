@@ -50,17 +50,12 @@ void drawBlock(int id, bool online) {
 }
  
 void OnDataRecv(const esp_now_recv_info *info, const uint8_t *data, int len) {
-void OnDataRecv(const esp_now_recv_info *info, const uint8_t *data, int len) {
     int polled = currentPollingID;
     if (polled >= 0 && polled < NUM_NODES && len == 3) {
         if (memcmp(info->src_addr, nodeMACs[polled], 6) == 0) {
             // Map 3 bytes from node directly into the packet buffer data section
             memcpy(&packetBuffer[HEADER_LEN + (polled * 3)], data, 3);
             lastSeen[polled] = millis();
-            dataReceived = true;
-        }
-    }
-}
             dataReceived = true;
         }
     }
