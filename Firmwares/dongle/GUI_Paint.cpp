@@ -111,7 +111,7 @@ void Paint_SetMirroring(UBYTE mirror)
 ******************************************************************************/
 void Paint_SetPixel(UWORD Xpoint, UWORD Ypoint, UWORD Color)
 {
-  if (Xpoint > Paint.Width || Ypoint > Paint.Height) {
+  if (Xpoint >= Paint.Width || Ypoint >= Paint.Height) {
     //Debug("Exceeding display boundaries\r\n");
     return;
   }
@@ -157,7 +157,7 @@ void Paint_SetPixel(UWORD Xpoint, UWORD Ypoint, UWORD Color)
   }
 
   // printf("x = %d, y = %d\r\n", X, Y);
-  if (X > Paint.WidthMemory || Y > Paint.HeightMemory) {
+  if (X >= Paint.WidthMemory || Y >= Paint.HeightMemory) {
     //Debug("Exceeding display boundaries\r\n");
     return;
   }
@@ -502,7 +502,8 @@ void Paint_DrawString_CN(UWORD Xstart, UWORD Ystart, const char * pString, cFONT
   int i, j, Num;
   /* Send the string character by character on EPD */
   while (*p_text != 0) {
-    if (*p_text < 0x7F) {                                  //ASCII
+    uint8_t ch = static_cast<uint8_t>(*p_text);
+    if (ch < 0x80) {                                       // ASCII
       for (Num = 0; Num < font->size ; Num++) {
         if (*p_text == pgm_read_byte(&font->table[Num].index[0])) {
           const char* ptr = &font->table[Num].matrix[0];
@@ -611,18 +612,8 @@ void Paint_DrawFloatNum(UWORD Xpoint, UWORD Ypoint, double Nummber,  UBYTE Decim
                         sFONT* Font,  UWORD Color_Background, UWORD Color_Foreground)
 {
   char Str[ARRAY_LEN] = {0};
-  dtostrf(Nummber,0,Decimal_Point+2,Str);
-  char * pStr= (char *)malloc((strlen(Str))*sizeof(char));
-  memcpy(pStr,Str,(strlen(Str)-2));
-  * (pStr+strlen(Str)-1)='\0';
-  if((*(pStr+strlen(Str)-3))=='.')
-  {
-	*(pStr+strlen(Str)-3)='\0';
-  }
-  //show
-  Paint_DrawString_EN(Xpoint, Ypoint, (const char*)pStr, Font, Color_Foreground, Color_Background);
-  free(pStr);
-  pStr=NULL;
+  dtostrf(Nummber, 0, Decimal_Point, Str);
+  Paint_DrawString_EN(Xpoint, Ypoint, Str, Font, Color_Background, Color_Foreground);
 }
 
 /******************************************************************************

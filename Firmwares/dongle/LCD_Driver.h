@@ -46,6 +46,6 @@ void LCD_SetUWORD(UWORD x, UWORD y, UWORD Color);
 void LCD_Init(void);
 void LCD_SetBacklight(UWORD Value);
 void LCD_Clear(UWORD Color);
-void LCD_ClearWindow(UWORD Xstart, UWORD Ystart, UWORD Xend, UWORD Yend, UWORD UWORD);
+void LCD_ClearWindow(UWORD Xstart, UWORD Ystart, UWORD Xend, UWORD Yend, UWORD color);
 
 #endif
