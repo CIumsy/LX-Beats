@@ -202,7 +202,6 @@ void LCD_Clear(UWORD Color)
   DEV_Digital_Write(DEV_DC_PIN,1);
   for(i = 0; i < LCD_WIDTH; i++){
     for(j = 0; j < LCD_HEIGHT; j++){
-      LCD_WriteData_Word((Color>>8)&0xff);
       LCD_WriteData_Word(Color);
     }
    }
