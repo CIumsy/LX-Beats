@@ -513,7 +513,7 @@ void loop() {
   }
 
   // Emit ONE line per sample: 3 traces (A0 A1 A2)
-  // Serial Plotter reads values on one line as one timestep. [web:362][web:365]
+  // Serial Plotter reads values on one line as one timestep. 
   float yPlot[NUM_CH];
   uint8_t mPlot[NUM_CH];
 
